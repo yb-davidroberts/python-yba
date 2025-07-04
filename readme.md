@@ -23,7 +23,7 @@ A typical pattern for working with YugabyteDB Anywhere (YBA) might be:
    - Backup locations
    - YugabyteDB software releases
 
-# Function
+# Usage
 
 ## Registering YugabyteDB Anywhere
 
@@ -259,13 +259,13 @@ As an example the returned universe may look like this:
 
 This function [adds a YugabyteDB release](https://docs.yugabyte.com/preview/yugabyte-platform/manage-deployments/ybdb-releases/) to the YBA instance so that it can be deployed to new or existing universes. Some common parameters are re-used from earlier examples by splatting `invoke_yba_request_args`, and it also accepts a package URL.
 
-The package URLs can be found on the [YugabyteDB releases web page](https://docs.yugabyte.com/preview/releases/ybdb-releases/). In the following table <version> is a four-segment version, such as 2024.2.3.2, and <build> is a build number prefixed with b, such as b6. Note that the Kubernetes Helm chart uses <short version>, a three segment version, such as 2024.2.3.
+The package URLs can be found on the [YugabyteDB releases web page](https://docs.yugabyte.com/preview/releases/ybdb-releases/). In the following table 'version' is a four-segment version, such as 2024.2.3.2, and 'build' is a build number prefixed with b, such as b6. Note that the Kubernetes Helm chart also uses 'short-version', a three segment version such as 2024.2.3.
 
 |Platform|Architecture|Releases page link?|Package URL pattern|
 |-|-|-|-|
-|Linux|x86 64-bit|Yes|https://software.yugabyte.com/releases/<build>/yugabyte-2024.2.3.2-b6-linux-x86_64.tar.gz|
-|Linux|ARM|Yes|https://software.yugabyte.com/releases/<build>>/yugabyte-<version>-<build>-el8-aarch64.tar.gz|
-|Kubernetes|Either|No|https://s3.us-west-2.amazonaws.com/releases.yugabyte.com/<version>-<build>/helm/yugabyte-<short version>.tgz|
+|Linux|x86 64-bit|Yes|https://software.yugabyte.com/releases/_build_/yugabyte-_version_-_build_-linux-x86_64.tar.gz|
+|Linux|ARM|Yes|https://software.yugabyte.com/releases/<build>>/yugabyte-_version_-_build_-el8-aarch64.tar.gz|
+|Kubernetes|Either|No|https://s3.us-west-2.amazonaws.com/releases.yugabyte.com/_version_-_build_/helm/yugabyte-_short-version_.tgz|
 
 The function accepts a package URL and either:
 
