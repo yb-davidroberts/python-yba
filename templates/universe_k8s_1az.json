@@ -1,0 +1,112 @@
+{
+  "spec": {
+    "name": "$name",
+    "yb_software_version": "$version",
+    "encryption_at_rest_spec": {},
+    "encryption_in_transit_spec": {
+      "enable_node_to_node_encrypt": true,
+      "enable_client_to_node_encrypt": true
+    },
+    "ysql": {
+      "enable": true,
+      "enable_auth": true,
+      "password": "$ysql_password"
+    },
+    "ycql": {
+      "enable": true,
+      "enable_auth": true,
+      "password": "$ycql_password"
+    },
+    "use_time_sync": true,
+    "networking_spec": {
+      "communication_ports": {
+        "master_http_port": 7000,
+        "master_rpc_port": 7100,
+        "node_exporter_port": 9300,
+        "otel_collector_metrics_port": 8889,
+        "redis_server_http_port": 11000,
+        "redis_server_rpc_port": 6379,
+        "tserver_http_port": 9000,
+        "tserver_rpc_port": 9100,
+        "yb_controller_http_port": 14000,
+        "yb_controller_rpc_port": 18018,
+        "yql_server_http_port": 12000,
+        "yql_server_rpc_port": 9042,
+        "ysql_server_http_port": 13000,
+        "ysql_server_rpc_port": 5433
+      },
+      "assign_public_ip": true,
+      "assign_static_public_ip": false,
+      "enable_ipv6": false
+    },
+    "clusters": [
+      {
+        "cluster_type": "PRIMARY",
+        "num_nodes": $node_count,
+        "replication_factor": $replication_factor,
+        "node_spec": {
+          "storage_spec": {
+            "volume_size": $volume_size,
+            "num_volumes": $volume_count,
+            "storage_class": "$storage_class"
+          },
+          "tserver": {
+            "storage_spec": {
+              "volume_size": $volume_size,
+              "num_volumes": $volume_count
+            }
+          },
+          "master": {
+            "storage_spec": {
+              "volume_size": $master_volume_size,
+              "num_volumes": $master_volume_count
+            }
+          },
+          "dedicated_nodes": false,
+          "k8s_master_resource_spec": {
+            "cpu_core_count": $master_cpu_count,
+            "memory_gib": $master_memory_gb
+          },
+          "k8s_tserver_resource_spec": {
+            "cpu_core_count": $tserver_cpu_count,
+            "memory_gib": $tserver_memory_gb
+          }
+        },
+        "networking_spec": {
+          "enable_exposing_service": "UNEXPOSED",
+          "enable_lb": false
+        },
+        "provider_spec": {
+          "provider": "$provider_id",
+          "region_list": [$cloud_region_list]
+        },
+        "placement_spec": {
+          "cloud_list": [
+            {
+              "uuid": "$cloud_id",
+              "code": "kubernetes",
+              "masters_in_default_region": true,
+              "region_list": [
+                {
+                  "uuid": "$cloud_region_id",
+                  "code": "$cloud_region_code",
+                  "name": "$cloud_region_name",
+                  "az_list": [
+                    {
+                      "uuid": "$cloud_az_id",
+                      "name": "$cloud_az_name",
+                      "replication_factor": $replication_factor,
+                      "num_nodes_in_az": $node_count,
+                      "leader_affinity": true
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      }
+    ]
+  },
+  "arch": "$architecture"
+}

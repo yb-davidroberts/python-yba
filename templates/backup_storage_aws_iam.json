@@ -1,0 +1,10 @@
+{
+  "type": "STORAGE",
+  "name": "S3",
+  "configName": "$configuration_name",
+  "data": {
+    "BACKUP_LOCATION": "s3://$bucket_name",
+    "AWS_HOST_BASE": "s3.amazonaws.com",
+    "IAM_INSTANCE_PROFILE": "true"
+  }
+}

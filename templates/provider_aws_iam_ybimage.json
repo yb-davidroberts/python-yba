@@ -1,0 +1,73 @@
+{
+  "code": "aws",
+  "name": "$name",
+  "details": {
+    "airGapInstall": true,
+    "cloudInfo": {
+      "aws": {}
+    },
+    "ntpServers": [],
+    "setUpChrony": true,
+    "sshPort": 22
+  },
+  "regions": [
+    {
+      "code": "$region_code",
+      "details": {
+        "cloudInfo": {
+          "aws": {
+            "securityGroupId": "$sg_id",
+            "vnet": "$vpc_id"
+          }
+        }
+      },
+      "zones": [
+        {
+          "code": "$zone_1_code",
+          "name": "$zone_1_code",
+          "subnet": "$zone_1_subnet"
+        },
+        {
+          "code": "$zone_2_code",
+          "name": "$zone_2_code",
+          "subnet": "$zone_2_subnet"
+        },
+        {
+          "code": "$zone_3_code",
+          "name": "$zone_3_code",
+          "subnet": "$zone_3_subnet"
+        }
+      ]
+    }
+  ],
+  "imageBundles": [
+    {
+      "name": "YBA-Managed-x86",
+      "details": {
+        "arch": "x86_64",
+        "regions": {
+          "$region_code": {}
+        },
+        "sshPort": 22
+      },
+      "metadata": {
+        "type": "YBA_ACTIVE"
+      },
+      "useAsDefault": true
+    },
+    {
+      "name": "YBA-Managed-aarch",
+      "details": {
+        "arch": "aarch64",
+        "regions": {
+          "$region_code": {}
+        },
+        "sshPort": 22
+      },
+      "metadata": {
+        "type": "YBA_ACTIVE"
+      },
+      "useAsDefault": true
+    }
+  ]
+}

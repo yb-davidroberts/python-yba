@@ -1,0 +1,11 @@
+{
+  "type": "STORAGE",
+  "name": "S3",
+  "configName": "$configuration_name",
+  "data": {
+    "BACKUP_LOCATION": "s3://$bucket_name",
+    "AWS_HOST_BASE": "s3.amazonaws.com",
+    "AWS_ACCESS_KEY_ID": "$access_key_id",
+    "AWS_SECRET_ACCESS_KEY": "$access_key_secret"
+  }
+}

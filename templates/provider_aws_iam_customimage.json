@@ -1,0 +1,73 @@
+{
+  "code": "aws",
+  "name": "$name",
+  "allAccessKeys": [
+    {
+      "keyInfo": {
+        "keyPairName": "aws-ssh-key",
+        "sshPrivateKeyContent": "$ssh_private_key",
+        "skipKeyValidateAndUpload": true
+      }
+    }
+  ],
+  "details": {
+    "airGapInstall": true,
+    "cloudInfo": {
+      "aws": {}
+    },
+    "ntpServers": [ "$ntp_server_1", "$ntp_server_2" ],
+    "setUpChrony": true,
+    "sshPort": 22
+  },
+  "regions": [
+    {
+      "code": "$region_code",
+      "details": {
+        "cloudInfo": {
+          "aws": {
+            "arch": "$architecture",
+            "securityGroupId": "$sg_id",
+            "vnet": "$vpc_id"
+          }
+        }
+      },
+      "zones": [
+        {
+          "code": "$zone_1_code",
+          "name": "$zone_1_code",
+          "subnet": "$zone_1_subnet"
+        },
+        {
+          "code": "$zone_2_code",
+          "name": "$zone_2_code",
+          "subnet": "$zone_2_subnet"
+        },
+        {
+          "code": "$zone_3_code",
+          "name": "$zone_3_code",
+          "subnet": "$zone_3_subnet"
+        }
+      ]
+    }
+  ],
+  "imageBundles": [
+    {
+      "details": {
+        "arch": "$architecture",
+        "sshPort": 22,
+        "useIMDSv2": true,
+        "regions": {
+          "$region_code": {
+            "ybImage": "$ami_id"
+          }
+        },
+        "sshUser": "$ssh_user"
+      },
+      "name": "$image_name",
+      "metadata": {
+        "type": "CUSTOM"
+      },
+      "useAsDefault": true
+    }
+  ]
+}

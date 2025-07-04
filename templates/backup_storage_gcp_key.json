@@ -1,0 +1,9 @@
+{
+  "type": "STORAGE",
+  "name": "GCS",
+  "configName": "$configuration_name",
+  "data": {
+    "BACKUP_LOCATION": "$bucket_name",
+    "GCS_CREDENTIALS_JSON": "$access_key_secret_json"
+  }
+}

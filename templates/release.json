@@ -1,0 +1,14 @@
+{
+  "version": "$version",
+  "release_tag": "",
+  "yb_type": "$yb_type",
+  "artifacts": [
+    {
+      "platform": "$platform",
+      "architecture": "$architecture",
+      "package_url": "$package_url"
+    }
+  ],
+  "release_type": "$release_type",
+  "release_date_msecs": $release_date_msecs
+}
