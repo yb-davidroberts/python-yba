@@ -34,13 +34,15 @@ When initially provisioned the YBA instance allows unauthenticated connection to
 This function can programmatically register a new YBA instance.
 
 ```
+import yba
+
 url = 'https://<FQDN or IP address>'
 name = '<full name>'
 email = '<email address>'
 password = '<password>'
 verify_certificate = False
 
-registration = register_yba_instance(
+registration = yba.register_yba_instance(
     url = url,
     code = 'dev',
     email = email,
@@ -69,7 +71,7 @@ It will return registration information, including the unique identifier for the
 Although the API token generated at registration does not expire it can also be retrieved with a login request to the API. This uses the email address and password supplied during registration.
 
 ```
-login = login_yba_instance(
+login = yba.login_yba_instance(
     url = 'https://<FQDN or IP address>',
     email = '<email address>',
     password = '<password>',
@@ -104,7 +106,7 @@ invoke_yba_request_args = {
     'verify_certificate': false
 }
 
-universes = invoke_yba_request(
+universes = yba.invoke_yba_request(
     **invoke_yba_request_args,
     endpoint = f"/api/v1/customers/{login['customerUUID']}/universes"
 )
@@ -276,7 +278,7 @@ The function accepts a package URL and either:
 Some common parameters are re-used from earlier examples by splatting `invoke_yba_request_args`.
 
 ```
-release = create_yba_release(
+release = yba.create_yba_release(
     **invoke_yba_request_args,
     package_url = 'https://software.yugabyte.com/releases/2024.1.6.0/yugabyte-2024.1.6.0-b53-el8-aarch64.tar.gz'
 )
@@ -287,7 +289,7 @@ release = create_yba_release(
 This function configures a storage location for backups using Amazon's S3 (Simple Storage Service) standard. Some common parameters are re-used from earlier examples by splatting `invoke_yba_request_args`.
 
 ```
-backup_storage = create_yba_backup_storage_aws(
+backup_storage = yba.create_yba_backup_storage_aws(
     **invoke_yba_request_args,
     configuration_name = 'backup-storage-location-1',
     bucket_name = 's3-bucket-backups'
@@ -335,7 +337,7 @@ params = {
     'zone_3_subnet': 'subnet-00000000000'
 }
 
-provider = create_yba_provider(
+provider = yba.create_yba_provider(
     **invoke_yba_request_args,
     params = params
 )
@@ -414,7 +416,7 @@ params = {
     'image_name': 'custom-aws-ec2-image'
 }
 
-provider = create_yba_provider(
+provider = yba.create_yba_provider(
     **invoke_yba_request_args,
     params = params,
     template_file = './templates/provider_aws_key_customimage.json'
@@ -430,7 +432,7 @@ If YugabyteDB Anywhere is deployed to Kubernetes with the `rbac.create` Helm cha
 The function has a `use_suggested` parameter to enable this option, else additonal values must be provided in the `params` dictionary for substitution into the JSON template. In this example the automatically detected Kubernetes details are used and only the storage class needs to be defined:
 
 ```
-create_yba_provider_local_kubernetes(
+yba.create_yba_provider_local_kubernetes(
     **invoke_yba_request_args,
     params = {'storage_class': 'default'},
     use_suggested = True
@@ -444,7 +446,7 @@ The universe creation function follows the pattern of earlier functions but has 
 Many of these details can be retrieved from the provider through the API, which this example does first. It assumes that the first provider is appropriate for the new universe.
 
 ```
-    providers = invoke_yba_request(
+    providers = yba.invoke_yba_request(
         **invoke_yba_request_args,
         endpoint = f"/api/v1/customers/{login['customerUUID']}/providers"
     )
@@ -477,7 +479,7 @@ Many of these details can be retrieved from the provider through the API, which 
     }
 
     # Create a universe
-    create_yba_universe(
+    yba.create_yba_universe(
         **invoke_yba_request_args,
         params = params
     )
