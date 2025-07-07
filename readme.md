@@ -264,7 +264,7 @@ The package URLs can be found on the [YugabyteDB releases web page](https://docs
 |Platform|Architecture|Releases page link?|Package URL pattern|
 |-|-|-|-|
 |Linux|x86 64-bit|Yes|https://software.yugabyte.com/releases/_build_/yugabyte-_version_-_build_-linux-x86_64.tar.gz|
-|Linux|ARM|Yes|https://software.yugabyte.com/releases/<build>>/yugabyte-_version_-_build_-el8-aarch64.tar.gz|
+|Linux|ARM|Yes|https://software.yugabyte.com/releases/_build_/yugabyte-_version_-_build_-el8-aarch64.tar.gz|
 |Kubernetes|Either|No|https://s3.us-west-2.amazonaws.com/releases.yugabyte.com/_version_-_build_/helm/yugabyte-_short-version_.tgz|
 
 The function accepts a package URL and either:
