@@ -12,7 +12,7 @@ Additional examples of using the API:
 https://github.com/yugabyte/yugabyte-db/tree/master/managed/api-examples/python-simple
 
 Author: David Roberts
-Version: 0.0.1
+Version: 0.0.2
 """
 
 import json
@@ -20,8 +20,9 @@ import requests
 import time
 import os
 import urllib3
+import uuid
 from string import Template
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 def invoke_yba_request(
     base_url: str,
@@ -132,7 +133,7 @@ def invoke_yba_request(
             raise ValueError(f"Expected a JSON-formatted response for in-flight task's status but received: {response.text}")
 
         # If the invoked task has finished, return the latest task
-        if json_task_response["percent"] == 100:
+        if json_task_response['percent'] == 100 or json_task_response['status'] in ['Aborted', 'Failure']:
             return json_task_response
 
         time.sleep(2) # Poll every two seconds until timeout reached
@@ -712,3 +713,318 @@ def create_yba_universe(
     )
 
     return universe_task
+
+
+    """
+    Transform nodeDetailsSet object in universe definition to the format required for universe creation.
+    
+    Args:
+        source_nodes: List of node details from the source universe
+        
+    Returns:
+        List of transformed node details to be used to create a new universe
+    """
+    target_nodes = []
+    
+    for node in source_nodes:
+        target_node = {
+            "nodeIdx": node.get("nodeIdx"),
+            "cloudInfo": node.get("cloudInfo", {}),
+            "azUuid": node.get("azUuid"),
+            "placementUuid": node.get("placementUuid"),
+            "disksAreMountedByUUID": node.get("disksAreMountedByUUID"),
+            "ybPrebuiltAmi": node.get("ybPrebuiltAmi"),
+            "autoSyncMasterAddrs": node.get("autoSyncMasterAddrs"),
+            "state": node.get("state"),
+            "isMaster": node.get("isMaster"),
+            "masterHttpPort": node.get("masterHttpPort"),
+            "masterRpcPort": node.get("masterRpcPort"),
+            "isTserver": node.get("isTserver"),
+            "tserverHttpPort": node.get("tserverHttpPort"),
+            "tserverRpcPort": node.get("tserverRpcPort"),
+            "ybControllerHttpPort": node.get("ybControllerHttpPort"),
+            "ybControllerRpcPort": node.get("ybControllerRpcPort"),
+            "isRedisServer": node.get("isRedisServer"),
+            "redisServerHttpPort": node.get("redisServerHttpPort"),
+            "redisServerRpcPort": node.get("redisServerRpcPort"),
+            "isYqlServer": node.get("isYqlServer"),
+            "yqlServerHttpPort": node.get("yqlServerHttpPort"),
+            "yqlServerRpcPort": node.get("yqlServerRpcPort"),
+            "isYsqlServer": node.get("isYsqlServer"),
+            "ysqlServerHttpPort": node.get("ysqlServerHttpPort"),
+            "ysqlServerRpcPort": node.get("ysqlServerRpcPort"),
+            "internalYsqlServerRpcPort": node.get("internalYsqlServerRpcPort"),
+            "nodeExporterPort": node.get("nodeExporterPort"),
+            "otelCollectorMetricsPort": node.get("otelCollectorMetricsPort"),
+            "cronsActive": node.get("cronsActive"),
+            "dedicatedTo": node.get("dedicatedTo")
+        }
+        
+        # Add masterState if present (only for master nodes)
+        if node.get("masterState"):
+            target_node["masterState"] = node.get("masterState")
+        
+        target_nodes.append(target_node)
+    
+    return target_nodes
+
+def replicate_yba_kubernetes_universe(
+    url: str,
+    api_token: str,
+    customer_id: str,
+    source_name: str,
+    name: str,
+    ycql_password: str = 'Yuga_123',
+    ysql_password: str = 'Yuga_123',
+    tserver_cpus: Optional[int] = None,
+    tserver_memory: Optional[int] = None,
+    master_cpus: Optional[int] = None,
+    master_memory: Optional[int] = None,
+    tserver_storage: Optional[int] = None,
+    what_if: bool = False,
+    verify_certificate: bool = True
+) -> dict[str, Any]:
+    """
+    Creates a Kubernetes or OpenShift universe with the same configuration as another in a YugabyteDB Anywhere instance.
+    Returns the universe creation task. Does not replicate schema or data between the universes.
+    Overrides can be used to set any exceptions, including the YCQL and YSQL password (which otherwise default to Yuga_123).
+
+    Args:
+        url (str): The base URL of the YugabyteDB Anywhere instance (e.g. 'https://yba.example.com').
+        api_token (str): API token for authentication.
+        customer_id (str): Customer / tenant ID.
+        source_name (str): Name of the universe to replicate.
+        name (str): Name of the universe to create.
+        ycql_password (str): Password for the default YCQL administrative user. Defaults to yugabyte.
+        ysql_password (str): Password for the default YCQL administrative user. Defaults to yugabyte.
+        tserver_cpus (int): Number of CPUs to assign to each tablet server node. Defaults to the same as the source universe.
+        master_cpus (int): Number of CPUs to assign to each master node. Defaults to the same as the source universe.
+        tserver_memory (int): Memory in gigabytes to assign to each tablet server node. Defaults to the same as the source universe.
+        master_memory (int): Memory in gigabytes to assign to each master node. Defaults to the same as the source universe.
+        tserver_storage (int): Storage in gigabytes to assign to each tablet server node. Defaults to the same as the source universe.
+        what_if (bool): Whether to return the JSON payload for universe creation rather than actually invoking the creation. Defaults to false.
+        verify_certificate (bool): Whether to verify the certificate presented by the YugabyteDB Anywhere instance. Defaults to true.
+    Returns:
+        dict: Parsed JSON response from the API.
+
+    Raises:
+        requests.exceptions.RequestException: For network-related errors.
+        ValueError: If the response is not JSON or contains an error.
+    """
+
+    # Retrieve the source universe from YBA
+    invoke_yba_request_args = {
+        'base_url': url,
+        'api_token': api_token,
+        'customer_id': customer_id,
+        'verify_certificate': verify_certificate
+    }
+    source_universe_id = invoke_yba_request(
+        **invoke_yba_request_args,
+        endpoint = f"/api/v1/customers/{customer_id}/universes/find?name={source_name}"
+    )
+    if len(source_universe_id) != 1:
+        raise RuntimeError(f"Unable to find an existing source universe named {source_name}")
+    source_universe = invoke_yba_request(
+        **invoke_yba_request_args,
+        endpoint = f"/api/v1/customers/{customer_id}/universes/{source_universe_id[0]}"
+    )
+
+    # Check the new universe doesn't already exist
+    destination_universe = invoke_yba_request(
+        **invoke_yba_request_args,
+        endpoint = f"/api/v1/customers/{customer_id}/universes/find?name={name}"
+    )
+    if destination_universe:
+        raise RuntimeError(f"A universe named {name} already exists")
+
+    # Extract universe details
+    source_universe = source_universe['universeDetails']
+
+    # Generate a UUID for the new universe
+    universe_id = str(uuid.uuid4())
+    
+    # Build the universe creation payload from the source universe
+    configure_universe = {
+        "platformVersion": source_universe.get("platformVersion"),
+        "sleepAfterMasterRestartMillis": source_universe.get("sleepAfterMasterRestartMillis"),
+        "sleepAfterTServerRestartMillis": source_universe.get("sleepAfterTServerRestartMillis"),
+        "nodeExporterUser": source_universe.get("nodeExporterUser"),
+        "universeUUID": universe_id,
+        "enableYbc": source_universe.get("enableYbc"),
+        "installYbc": source_universe.get("installYbc"),
+        "ybcInstalled": False, # Default value for a new universe
+        "expectedUniverseVersion": source_universe.get("expectedUniverseVersion"),
+        
+        # Transform encryptionAtRestConfig - the source has a different structure
+        "encryptionAtRestConfig": {
+            "encryptionAtRestEnabled": source_universe.get("encryptionAtRestConfig", {}).get("encryptionAtRestEnabled", "UNDEFINED")
+        },
+        
+        # Generate nodeDetailsSet based on the source nodeDetailsSet
+        "nodeDetailsSet": _replicate_yba_kubernetes_universe_node_details(source_universe.get("nodeDetailsSet", [])),
+        
+        # Copy communicationPorts directly as it has the same structure
+        "communicationPorts": source_universe.get("communicationPorts", {}),
+        
+        # Copy extraDependencies directly
+        "extraDependencies": source_universe.get("extraDependencies", {}),
+        
+        # Copy creatingUser directly
+        "creatingUser": source_universe.get("creatingUser", {}),
+        
+        "platformUrl": source_universe.get("platformUrl"),
+        
+        # Copy clusters directly as they have the same structure, then update some specifics
+        "clusters": source_universe.get("clusters", []),
+        
+        "currentClusterType": source_universe.get("currentClusterType"),
+        "nodePrefix": source_universe.get("nodePrefix").removesuffix(source_name) + name,
+        "rootAndClientRootCASame": source_universe.get("rootAndClientRootCASame"),
+        "userAZSelected": source_universe.get("userAZSelected"),
+        "resetAZConfig": source_universe.get("resetAZConfig"),
+        "updateInProgress": source_universe.get("updateInProgress"),
+        "updateSucceeded": source_universe.get("updateSucceeded"),
+        "universePaused": source_universe.get("universePaused"),
+        "softwareUpgradeState": source_universe.get("softwareUpgradeState"),
+        "isSoftwareRollbackAllowed": source_universe.get("isSoftwareRollbackAllowed"),
+        "nextClusterIndex": source_universe.get("nextClusterIndex"),
+        "allowInsecure": source_universe.get("allowInsecure"),
+        "setTxnTableWaitCountFlag": source_universe.get("setTxnTableWaitCountFlag"),
+        "itestS3PackagePath": source_universe.get("itestS3PackagePath"),
+        "remotePackagePath": source_universe.get("remotePackagePath"),
+        "nodesResizeAvailable": source_universe.get("nodesResizeAvailable"),
+        "useNewHelmNamingStyle": source_universe.get("useNewHelmNamingStyle"),
+        "mastersInDefaultRegion": source_universe.get("mastersInDefaultRegion"),
+        "isKubernetesOperatorControlled": source_universe.get("isKubernetesOperatorControlled"),
+        "overridePrebuiltAmiDBVersion": source_universe.get("overridePrebuiltAmiDBVersion"),
+        "sequenceNumber": -1, # Default value for a new universe
+        "importedState": source_universe.get("importedState"),
+        "capability": source_universe.get("capability"),
+        "updateOptions": source_universe.get("updateOptions"),
+        "otelCollectorEnabled": source_universe.get("otelCollectorEnabled"),
+        "skipMatchWithUserIntent": source_universe.get("skipMatchWithUserIntent"),
+        "installNodeAgent": source_universe.get("installNodeAgent"),
+        "clusterOperation": "CREATE", # Default value for a new universe
+        "allowGeoPartitioning": False, # Default value for a new universe
+        "regionsChanged": False, # Default value
+        "xclusterInfo": source_universe.get("xclusterInfo", {}),
+        "targetXClusterConfigs": source_universe.get("targetXClusterConfigs", []),
+        "sourceXClusterConfigs": source_universe.get("sourceXClusterConfigs", [])
+    }
+    
+    # Add CAs if present (they won't be if the universe is using self-signed certificates or not enabling TLS
+    if source_universe.get('rootCA'):
+        configure_universe['rootCA'] = source_universe.get('rootCA')
+    if source_universe.get('clientRootCA'):
+        configure_universe['clientRootCA'] = source_universe.get("clientRootCA")
+
+    for cluster in configure_universe['clusters']:
+        # Replace the name in the replicated clusters blocks
+        cluster['userIntent']['universeName'] = name
+        # Replace the passwords for the cluster
+        cluster['userIntent']['ycqlPassword'] = ycql_password
+        cluster['userIntent']['ysqlPassword'] = ysql_password
+        # Update required specification if overridden
+        if tserver_cpus:
+            cluster['userIntent']['tserverK8SNodeResourceSpec']['cpuCoreCount'] = tserver_cpus
+        if tserver_memory:
+            cluster['userIntent']['tserverK8SNodeResourceSpec']['memoryGib'] = tserver_memory
+        if tserver_storage:
+            cluster['userIntent']['deviceInfo']['volumeSize'] = tserver_storage
+        # Replica clusters don't necessarily have masters
+        if master_cpus and 'masterK8SNodeResourceSpec' in cluster['userIntent']:
+            cluster['userIntent']['masterK8SNodeResourceSpec']['cpuCoreCount'] = master_cpus
+        if master_memory and 'masterK8SNodeResourceSpec' in cluster['userIntent']:
+            cluster['userIntent']['masterK8SNodeResourceSpec']['memoryGib'] = master_memory
+
+    # Remove xCluster certificate path from its block
+    del configure_universe['xclusterInfo']['sourceRootCertDirPath']
+
+    # Compose a new universe with the required specification
+    configured_universe = invoke_yba_request(
+        **invoke_yba_request_args,
+        endpoint = f"/api/v1/customers/{customer_id}/universe_configure",
+        method = 'POST',
+        payload = configure_universe
+    )
+
+    for cluster in configured_universe['clusters']:
+        # Put the passwords back in as they are redacted fromt he previous response
+        cluster['userIntent']['ycqlPassword'] = ycql_password
+        cluster['userIntent']['ysqlPassword'] = ysql_password
+
+    if what_if:
+        return json.dumps(configured_universe)
+    else:
+        # Create a new universe with the fully-specified definition returned from YBA
+        return invoke_yba_request(
+            **invoke_yba_request_args,
+            endpoint = f"/api/v1/customers/{customer_id}/universes",
+            method = 'POST',
+            payload = configured_universe,
+            wait = True
+        )
+
+def _replicate_yba_kubernetes_universe_node_details(source_nodes: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """
+    Transform nodeDetailsSet object in universe definition to the format required for universe creation.
+    
+    Args:
+        source_nodes: List of node details from the source universe
+        
+    Returns:
+        List of transformed node details to be used to create a new universe
+    """
+    target_nodes = []
+    
+    for node in source_nodes:
+        target_node = {
+            "nodeIdx": node.get("nodeIdx"),
+            "cloudInfo": node.get("cloudInfo", {}),
+            "azUuid": node.get("azUuid"),
+            "placementUuid": node.get("placementUuid"),
+            "disksAreMountedByUUID": node.get("disksAreMountedByUUID"),
+            "ybPrebuiltAmi": node.get("ybPrebuiltAmi"),
+            "autoSyncMasterAddrs": node.get("autoSyncMasterAddrs"),
+            "state": 'ToBeAdded', # Default for new universes
+            "isMaster": node.get("isMaster"),
+            "masterHttpPort": node.get("masterHttpPort"),
+            "masterRpcPort": node.get("masterRpcPort"),
+            "isTserver": node.get("isTserver"),
+            "tserverHttpPort": node.get("tserverHttpPort"),
+            "tserverRpcPort": node.get("tserverRpcPort"),
+            "ybControllerHttpPort": node.get("ybControllerHttpPort"),
+            "ybControllerRpcPort": node.get("ybControllerRpcPort"),
+            "redisServerHttpPort": node.get("redisServerHttpPort"),
+            "redisServerRpcPort": node.get("redisServerRpcPort"),
+            "isYqlServer": node.get("isYqlServer"),
+            "yqlServerHttpPort": node.get("yqlServerHttpPort"),
+            "yqlServerRpcPort": node.get("yqlServerRpcPort"),
+            "isYsqlServer": node.get("isYsqlServer"),
+            "ysqlServerHttpPort": node.get("ysqlServerHttpPort"),
+            "ysqlServerRpcPort": node.get("ysqlServerRpcPort"),
+            "internalYsqlServerRpcPort": node.get("internalYsqlServerRpcPort"),
+            "nodeExporterPort": node.get("nodeExporterPort"),
+            "otelCollectorMetricsPort": node.get("otelCollectorMetricsPort"),
+            "cronsActive": node.get("cronsActive"),
+            "dedicatedTo": node.get("dedicatedTo")
+        }
+        
+        # Remove some specific node info that should not be preset for a universe not yet created
+        if 'kubernetesPodName' in target_node['cloudInfo']:
+            del target_node['cloudInfo']['kubernetesPodName']
+        if 'kubernetesNamespace' in target_node['cloudInfo']:
+            del target_node['cloudInfo']['kubernetesNamespace']
+        if 'private_ip' in target_node['cloudInfo']:
+            del target_node['cloudInfo']['private_ip']
+
+        # Add masterState if present (only for master nodes)
+        if node.get('isMaster'):
+            target_node['masterState'] = 'ToStart' # Default for new universes
+            target_node['isRedisServer'] = True # Default for new universes,
+            target_node['dedicatedTo'] = 'MASTER'
+        
+        target_nodes.append(target_node)
+    
+    return target_nodes

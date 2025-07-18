@@ -439,7 +439,7 @@ yba.create_yba_provider_local_kubernetes(
 )
 ```
 
-### create_yba_universe
+### create_yba_universe (API v2)
 
 The universe creation function follows the pattern of earlier functions but has a longer list of required details to be injected into the creation template.
 
@@ -483,4 +483,68 @@ Many of these details can be retrieved from the provider through the API, which 
         **invoke_yba_request_args,
         params = params
     )
+```
+
+### replicate_yba_kubernetes_universe
+
+Unlike earlier examples this function doesn't use a JSON template to construct the API payload. It accepts a Kubernetes or OpenShift universe name and retrieves the current configuration of the universe from YBA. It then constructs a request to the v1 API endpoint to validate a new configuration, and finally submits the validated configuration for provisioning. The example above uses the v2 API to create a universe.
+
+It will replicate a universe's configuration, including all clusters, global flags and Kubernetes overrides, but not the data from a source universe.
+
+It can accept a new node specification (CPU count, memory and tablet server storage) but will always create the same number of nodes across the same regions and availability zones.
+
+It can also accept a new password for connections with the yugabyte (YSQL) and cassandra (YCQL) users. If they are not provided it will use a default of `Yuga_123`.
+
+```
+replicate_yba_kubernetes_universe(
+    **invoke_yba_request_args,
+    source_name = 'existing-universe',
+    name = 'new-universe',
+    tserver_cpus = 1,
+    tserver_memory = 2,
+    master_cpus = 1,
+    tserver_storage = 25,
+    what_if = False
+)
+```
+
+The response is the output of the universe creation task:
+
+```
+{
+    "title": "Created Universe : new-universe",
+    "createTime": "Fri Jul 18 15:29:38 UTC 2025",
+    "completionTime": "Fri Jul 18 15:33:25 UTC 2025",
+    "target": "new-universe",
+    "targetUUID": "e87d3883-1cf8-4868-979d-a142eff66fa0",
+    "type": "Create",
+    "status": "Success",
+    "percent": 100,
+    "correlationId": "d339c5e3-4942-479b-be34-6f0a99f919ff",
+    "userEmail": "admin@yugabyte.com",
+    "details": {
+        "taskDetails": [
+            {
+                "title": "Validating configurations",
+                "description": "Validating configurations before proceeding",
+                "state": "Success",
+                "extraDetails": []
+            },
+            {
+                "title": "Provisioning",
+                "description": "Deploying machines of the required config into the desired cloud and fetching information about them.",
+                "state": "Success",
+                "extraDetails": []
+            },
+            {
+                "title": "Configuring the universe",
+                "description": "Creating and populating the universe config, waiting for the various machines to discover one another.",
+                "state": "Success",
+                "extraDetails": []
+            }
+        ]
+    },
+    "abortable": false,
+    "retryable": false
+}
 ```
